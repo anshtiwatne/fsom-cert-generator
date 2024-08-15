@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # pylint: disable=redefined-outer-name
+"""Generate certificates and emails for marathon runners form runners.csv"""
 
 import csv
 import os
@@ -23,7 +24,7 @@ with open(SRC / "config.toml", "rb") as f:
 with open(TEMPLATES / "certificate.svg", "r", encoding="UTF-8") as f:
 	cert_template = Template(f.read())
 
-with open(TEMPLATES / "email.txt", "r", encoding="UTF-8") as f:
+with open(TEMPLATES / "email.html", "r", encoding="UTF-8") as f:
 	email_template = Template(f.read())
 
 with open(TEMPLATES / "selenium.html", "r", encoding="UTF-8") as f:
@@ -79,13 +80,15 @@ def generate_certificates():
 	"""Generate PDF certificates using runners.csv and template.svg"""
 
 	for runner in runners:
+		runner_dir = Path("out", runner["email"])
+		runner_dir.mkdir(parents=True, exist_ok=True)
+
+		with open(runner_dir / "email.html", "w", encoding="UTF-8") as f:
+			f.write(email_template.substitute(runner | cert_config))
+
 		runner["name"] = runner["name"].upper()
 		cert = cert_template.substitute(runner | cert_config)
-		runner_dir = Path("out", runner["email"])
-		svg_to_png(cert, runner_dir, "fsom-certificate.png")
-
-		with open(runner_dir / "email.txt", "w", encoding="UTF-8") as f:
-			f.write(email_template.substitute(runner | cert_config))
+		svg_to_png(cert, runner_dir, "certificate.png")
 
 	driver.quit()
 
