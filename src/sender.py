@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-# pylint: disable=import-error, redefined-outer-name
+# pylint: disable=redefined-outer-name, broad-exception-caught
 """Send emails with certificate attachments from the out directory."""
 
+import logging
 import smtplib
 import ssl
 import tomllib
@@ -15,6 +16,9 @@ SRC = Path("src")
 OUT = Path("out")
 ATTACHMENTS = Path("attachments")
 CONTEXT = ssl.create_default_context()
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename="sender.log", level=logging.INFO)
 
 with open(SRC / "config.toml", "rb") as f:
 	email_config = tomllib.load(f)["email"]
@@ -58,10 +62,12 @@ def send_cert_email(folder: Path):
 
 	recipient = folder.name
 	send_email(recipient, body, certificate_file)
+	logger.info("Sent email to %s", recipient)
 
 
 def main():
 	"""Send certificates to all recipients."""
+	logger.info("Sending emails")
 
 	with ThreadPoolExecutor(max_workers=10) as executor:
 		futures = [
@@ -70,7 +76,12 @@ def main():
 			if folder.is_dir()
 		]
 		for future in futures:
-			future.result()
+			try:
+				future.result()
+			except Exception as e:
+				logger.error("Error sending email: %s", e)
+
+	logger.info("All emails sent")
 
 
 if __name__ == "__main__":
