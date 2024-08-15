@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-# pylint: skip-file
+# pylint: disable=redefined-outer-name
 
 import csv
+import os
+import tempfile
 import tomllib
-from string import Template
-from pathlib import Path
 from datetime import date
-from image import svg_to_png
+from pathlib import Path
+from string import Template
+
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
 
 SRC = Path("src")
 TEMPLATES = Path("templates")
@@ -19,6 +25,9 @@ with open(TEMPLATES / "certificate.svg", "r", encoding="UTF-8") as f:
 
 with open(TEMPLATES / "email.txt", "r", encoding="UTF-8") as f:
 	email_template = Template(f.read())
+
+with open(TEMPLATES / "selenium.html", "r", encoding="UTF-8") as f:
+	html_template = Template(f.read())
 
 with open(SRC / "runners.csv", "r", encoding="UTF-8") as f:
 	runners = list(csv.DictReader(f))
@@ -35,6 +44,36 @@ cert_config.update(
 	}
 )
 
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+
+prefs = {
+	"download.prompt_for_download": False,
+	"download.directory_upgrade": True,
+}
+
+chrome_options.add_experimental_option("prefs", prefs)
+service = Service(Path("bin", "chromedriver.exe"))
+driver = webdriver.Chrome(service=service, options=chrome_options)
+
+
+def svg_to_png(svg_str, download_dir: Path, file_name):
+	"""Convert SVG string to PNG image using headless Chrome"""
+
+	page = html_template.substitute({"svg": svg_str, "file_name": file_name})
+	driver.execute_cdp_cmd(
+		"Page.setDownloadBehavior",
+		{"behavior": "allow", "downloadPath": str(download_dir.absolute())},
+	)
+
+	with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
+		tmp_file.write(page.encode("UTF-8"))
+		tmp_file_path = tmp_file.name
+
+	driver.get(f"file://{tmp_file_path}")
+	WebDriverWait(driver, 20).until(lambda _: (download_dir / file_name).exists())
+	os.remove(tmp_file_path)
+
 
 def generate_certificates():
 	"""Generate PDF certificates using runners.csv and template.svg"""
@@ -47,6 +86,8 @@ def generate_certificates():
 
 		with open(runner_dir / "email.txt", "w", encoding="UTF-8") as f:
 			f.write(email_template.substitute(runner | cert_config))
+
+	driver.quit()
 
 
 if __name__ == "__main__":
