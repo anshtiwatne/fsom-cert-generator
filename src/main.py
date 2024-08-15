@@ -18,7 +18,7 @@ SRC = Path("src")
 TEMPLATES = Path("templates")
 
 with open(SRC / "config.toml", "rb") as f:
-	cert_config = tomllib.load(f)
+	cert_config = tomllib.load(f)["certificate"]
 
 with open(TEMPLATES / "certificate.svg", "r", encoding="UTF-8") as f:
 	cert_template = Template(f.read())

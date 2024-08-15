@@ -1,3 +1,9 @@
+[certificate]
 marathon = "Run2Empower" # Use title case
 date = "2024-08-04" # Format: YYYY-MM-DD (ISO 8601)
-title = "Certificate of Participation" # use title case
+title = "Certificate of Participation"
+
+[email]
+sender = "example@gmail.com"
+password = "yourpassword" # your google app password
+subject = "FSOM Test"
