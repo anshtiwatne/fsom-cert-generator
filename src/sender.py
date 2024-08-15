@@ -13,13 +13,14 @@ from pathlib import Path
 
 SRC = Path("src")
 OUT = Path("out")
+ATTACHMENTS = Path("attachments")
 CONTEXT = ssl.create_default_context()
 
 with open(SRC / "config.toml", "rb") as f:
 	email_config = tomllib.load(f)["email"]
 
 
-def send_email(recipient: str, body: str, attachment: Path):
+def send_email(recipient: str, body: str, certificate: Path):
 	"""Send an email with the certificate attached."""
 
 	msg = MIMEMultipart()
@@ -28,8 +29,14 @@ def send_email(recipient: str, body: str, attachment: Path):
 	msg["To"] = recipient
 	msg.attach(MIMEText(body, "html"))
 
-	with open(attachment, "rb") as f:
-		msg.attach(MIMEApplication(f.read(), Name=attachment.name))
+	with open(certificate, "rb") as f:
+		msg.attach(MIMEApplication(f.read(), Name=certificate.name))
+
+	for attachment in ATTACHMENTS.iterdir():
+		if not attachment.is_file():
+			continue
+		with open(attachment, "rb") as f:
+			msg.attach(MIMEApplication(f.read(), Name=attachment.name))
 
 	# SMTP is not thread-safe, so we need to create a new connection for each thread
 	with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=CONTEXT) as server:
