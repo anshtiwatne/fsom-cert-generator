@@ -83,6 +83,7 @@ def generate_certificates():
 		runner_dir = Path("out", runner["email"])
 		runner_dir.mkdir(parents=True, exist_ok=True)
 
+		runner["name"] = runner["name"].title()
 		with open(runner_dir / "email.html", "w", encoding="UTF-8") as f:
 			f.write(email_template.substitute(runner | cert_config))
 
